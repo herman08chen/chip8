@@ -2,24 +2,25 @@
 #include <fstream>
 #include <iostream>
 #include <ranges>
-#include <sstream>
 #include <thread>
 #include <SDL2pp/SDL2pp.hh>
 #include "chip8/Chip8.h"
+#include "chip8/clock.h"
 
 //import std;
 
 namespace sdl2 = SDL2pp;
 
 int main(int argc, char* argv[]) {
+    using namespace std::chrono_literals;
     assert(argc == 2);
 
     sdl2::SDL sdl(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
     CHIP8::State state(std::ifstream(argv[1], std::ios::in | std::ios::binary | std::ios::ate));
 
+    CHIP8::Clock clock(std::chrono::steady_clock::now(), 2ms);
     while (true) {
-        using namespace std::chrono_literals;
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
@@ -42,7 +43,11 @@ int main(int argc, char* argv[]) {
             state.draw();
             state.update_timers();
         }
-        std::this_thread::sleep_for(1ms);
+        else if (state._sdl.needs_draw()) {
+            state._sdl.draw();
+        }
+
+        clock.sleep_until_next_period();
     }
 
     return 0;

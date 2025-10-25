@@ -15,7 +15,9 @@ add_executable(chip8 main.cpp
         chip8/display.h
         chip8/types.h
         chip8/state.cpp
-        chip8/state.h)
+        chip8/state.h
+        chip8/clock.cpp
+        chip8/clock.h)
 
 set(SDL2PP_WITH_IMAGE ON) # if you need SDL_image support
 set(SDL2PP_WITH_MIXER ON) # if you need SDL_mixer support
@@ -23,4 +25,4 @@ set(SDL2PP_WITH_TTF ON) # if you need SDL_ttf support
 
 find_package(SDL2pp REQUIRED)
 target_link_libraries(chip8 SDL2pp::SDL2pp)
-target_compile_options(chip8 PUBLIC -fmodules-ts -O3 )
+target_compile_options(chip8 PUBLIC -fmodules-ts -O3 -Wall -Wextra)

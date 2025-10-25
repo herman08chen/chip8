@@ -12,6 +12,8 @@
 #include <stack>
 #include <chrono>
 
+#include "clock.h"
+
 
 namespace CHIP8 {
     class State {
@@ -23,12 +25,12 @@ namespace CHIP8 {
         std::stack<instr_t> _stack;
         std::uint8_t _delay_timer;
         std::uint8_t _sound_timer;
+        Clock _timer;
         std::uint8_t _regs[16];
         bool _done;
-        std::chrono::time_point<std::chrono::steady_clock> last_timer_update;
 
-        State(std::ifstream&& rom) noexcept;
-        State(std::span<std::uint8_t>) noexcept;
+        explicit State(std::ifstream&& rom) noexcept;
+        explicit State(std::span<std::uint8_t>) noexcept;
         State() noexcept = delete;
         State(const State&) = delete;
         State(State&&) = delete;
@@ -39,7 +41,7 @@ namespace CHIP8 {
         void execute_one_instruction() noexcept;
         void draw() noexcept;
         void advance_one_instruction() noexcept;
-        bool done() noexcept;
+        [[nodiscard]] bool done() const noexcept;
         void set_key(const SDL_KeyCode&, bool) noexcept;
         void update_timers() noexcept;
 

@@ -33,8 +33,6 @@ namespace CHIP8 {
         std::cout << "File size: " << size << " bytes\n";
         file.seekg(0, std::ios::beg);
 
-        assert(size % sizeof(CHIP8::instr_t) == 0);
-
         std::vector<std::uint8_t> rom(size);
 
         file.read(reinterpret_cast<char*>(rom.data()), size);
@@ -50,8 +48,17 @@ namespace CHIP8 {
 
         return rom;
     }
-    State::State(std::ifstream&& file) noexcept
-        : _memory{}, _sdl{}, _pc{0x200}, _index{0x200}, _stack{}, _delay_timer{}, _sound_timer{}, _regs{}, last_timer_update{std::chrono::steady_clock::now()}
+    State::State(std::ifstream&& file) noexcept :
+        _memory{},
+        _sdl{},
+        _pc{0x200},
+        _index{0x200},
+        _stack{},
+        _delay_timer{},
+        _sound_timer{},
+        _timer{std::chrono::steady_clock::now(), 33ms},
+        _regs{},
+        _done{false}
     {
         std::vector<std::uint8_t> vec = read_file(std::move(file));
         std::span rom(vec);
@@ -61,8 +68,17 @@ namespace CHIP8 {
         std::memcpy(_memory + 0x200, rom.data(), rom.size());
         std::cout << "initialized state" << std::endl;
     }
-    State::State(std::span<std::uint8_t> rom) noexcept
-    : _memory{}, _sdl{}, _pc{0x200}, _index{0x200}, _stack{}, _delay_timer{}, _sound_timer{}, _regs{}, _done{false}
+    State::State(std::span<std::uint8_t> rom) noexcept :
+        _memory{},
+        _sdl{},
+        _pc{0x200},
+        _index{0x200},
+        _stack{},
+        _delay_timer{},
+        _sound_timer{},
+        _timer{std::chrono::steady_clock::now(), Clock::hz(60)},
+        _regs{},
+        _done{false}
     {
         std::memcpy(_memory + 0x200, rom.data(), rom.size());
         std::cout << "initialized state" << std::endl;
@@ -88,7 +104,7 @@ namespace CHIP8 {
         if (_pc + 2 < 4096)
             _pc += 2;
     }
-    bool State::done() noexcept {
+    bool State::done() const noexcept {
         return _done;
     }
     void State::set_key(const SDL_KeyCode& key, bool is_down) noexcept {
@@ -138,23 +154,22 @@ namespace CHIP8 {
             case SDLK_v:
                 _sdl.set_key(0xF, is_down);
                 break;
+            default: ;
         }
     }
     void State::update_timers() noexcept {
-        using namespace std::chrono_literals;
-        const auto now = std::chrono::steady_clock::now();
-        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_timer_update).count();
-        if (elapsed > 33) {
-            last_timer_update += std::chrono::duration_cast<std::chrono::steady_clock::duration>(33ms);
-            if (_delay_timer > 0)   _delay_timer--;
-            if (_sound_timer > 0) {
-                _sdl.play_sound();
-                _sound_timer--;
+        _timer.invoke_if_can_update(
+            [this]() -> void {
+                if (_delay_timer > 0)   _delay_timer--;
+                if (_sound_timer > 0) {
+                    _sdl.play_sound();
+                    _sound_timer--;
+                }
+                else {
+                    _sdl.stop_sound();
+                }
             }
-            else {
-                _sdl.stop_sound();
-            }
-        }
+        );
     }
 
 }

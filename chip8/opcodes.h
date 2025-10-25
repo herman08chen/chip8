@@ -7,11 +7,8 @@
 
 #include "types.h"
 #include <array>
-#include <cstdint>
 #include <bitset>
-#include <charconv>
 #include <cstring>
-#include <iomanip>
 #include <random>
 #include <ranges>
 #include <utility>
@@ -20,15 +17,6 @@
 #include "state.h"
 
 namespace CHIP8 {
-    constexpr std::array<std::uint8_t, 3> to_base_10(std::uint8_t value) noexcept {
-        const std::array<std::uint8_t, 3> ret{static_cast<std::uint8_t>(value / 100), static_cast<std::uint8_t>((value / 10) % 10), static_cast<std::uint8_t>(value % 10)};
-        std::cout << std::dec << static_cast<int>(value) << " to base 10 = ";
-        for (auto&& i : ret) {
-            std::cout << static_cast<int>(i) << ' ';
-        }
-        std::cout << std::endl;
-        return ret;
-    }
     struct vtable_t {
         void(*execute)(State&, const instr_t&);
     };
@@ -52,7 +40,7 @@ namespace CHIP8 {
     }
     constexpr vtable_t _0 = {
         .execute = +[](State& state, const instr_t& instr) -> void {
-            const auto bits = deconstruct(instr);
+            [[maybe_unused]]  auto bits = deconstruct(instr);
             if (instr == 0x00E0) {
                 state._sdl.clear();
                 state.advance_one_instruction();
@@ -150,29 +138,61 @@ namespace CHIP8 {
                     VX ^= VY;
                     break;
                 case 4:
-                    VF = 0;
-                    if (256 - VX < VY)    VF = 1;
-                    VX += VY;
+                    if (256 - VX < VY) {
+                        VX += VY;
+                        VF = 1;
+                    }
+                    else {
+                        VX += VY;
+                        VF = 0;
+                    }
                     break;
                 case 5:
-                    VF = 0;
-                    if (VX > VY) VF = 1;
-                    VX = VX - VY;
+                    if (VX >= VY) {
+                        VX = VX - VY;
+                        VF = 1;
+                    }
+                    else {
+                        VX = VX - VY;
+                        VF = 0;
+                    }
+
                     break;
                 case 7:
-                    VF = 0;
-                    if (VY > VX) VF = 1;
-                    VX = VY - VX;
+                    if (VY >= VX) {
+                        VX = VY - VX;
+                        VF = 1;
+                    }
+                    else {
+                        VX = VY - VX;
+                        VF = 0;
+                    }
+
                     break;
                 case 6:
-                    VX = VY;
-                    VF = VX & 1u;
-                    VX >>= 1;
+                    if (VX & 1u) {
+                        VX = VY;
+                        VX = VX >> 1;
+                        VF = 1;
+                    }
+                    else {
+                        VX = VY;
+                        VX = VX >> 1;
+                        VF = 0;
+                    }
+
                     break;
                 case 0xE:
-                    VX = VY;
-                    VF = VX >> 7;
-                    VX <<= 1;
+                    if (VX >> 7) {
+                        VX = VY;
+                        VX = VX << 1;
+                        VF = 1;
+                    }
+                    else {
+                        VX = VY;
+                        VX = VX << 1;
+                        VF = 0;
+                    }
                     break;
                 default:
                     state._done = true;
@@ -220,7 +240,6 @@ namespace CHIP8 {
     constexpr vtable_t _D = {
         .execute = +[](State& state, const instr_t& instr) -> void {
             const auto bits = deconstruct(instr);
-            const std::uint8_t* sprite_begin = state._memory + state._index;
             const std::span<std::uint8_t> sprite(state._memory + state._index, bits.N);
             const auto VX = state._regs[bits.X] % 64;
             const auto VY = state._regs[bits.Y] % 32;
@@ -229,7 +248,7 @@ namespace CHIP8 {
 
             for (auto&& [row, y] : std::ranges::views::zip(sprite, std::ranges::iota_view{VY, 32} | std::ranges::views::take(bits.N))) {
                 for (auto&& [bit, x] : std::ranges::iota_view(VX, 64) | std::ranges::views::take(8) | std::ranges::views::enumerate) {
-                    std::uint8_t pixel = std::bitset<8>(row)[7 - bit];
+                    const std::uint8_t pixel = std::bitset<8>(row)[7 - bit];
                     VF |= state._sdl.exchange_pixel(x, y, pixel);
                 }
             }
@@ -277,7 +296,7 @@ namespace CHIP8 {
                     state._index += VX;
                     break;
                 case 0x0A: {
-                    auto key = std::ranges::find(state._sdl.get_keys(), 1);
+                    const auto key = std::ranges::find(state._sdl.get_keys(), 1);
                     if (key != std::end(state._sdl.get_keys())) {
                         VX = *key;
                         state.advance_one_instruction();
@@ -285,7 +304,7 @@ namespace CHIP8 {
                     break; }
                 case 0x29: {
                     state.advance_one_instruction();
-                    auto character = deconstruct(VX).NN;
+                    const auto character = deconstruct(VX).NN;
                     state._index = character * 5;
                     break; }
                 case 0x33: {
