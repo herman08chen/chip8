@@ -1,13 +1,31 @@
-cmake_minimum_required(VERSION 4.0)
-project(chip8)
+cmake_minimum_required(VERSION 3.16)
+project(chip8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "a9e1cf81-9932-4810-974b-6eccaf14e457")
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CXX_STANDARD_REQUIRED OFF)
-set(CMAKE_CXX_MODULE_STD 1)
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
 
-add_executable(chip8 main.cpp
+# Headless unit tests for the CHIP-8 core.  These compile state.cpp and
+# opcodes.cpp only (no SDL), so they run without a graphics/audio subsystem.
+add_executable(chip8_test
+    tests/test_chip8.cpp
+    chip8/state.cpp
+    chip8/opcodes.cpp
+)
+
+target_include_directories(chip8_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(chip8_test PRIVATE -Wall -Wextra -O2)
+
+# The graphical frontend is optional because SDL2pp/SDL2 development files are
+# not installed in every environment.
+find_package(SDL2pp QUIET)
+if (SDL2pp_FOUND)
+    add_executable(chip8
+        main.cpp
         chip8/Chip8.h
         chip8/opcodes.cpp
         chip8/opcodes.h
@@ -17,12 +35,8 @@ add_executable(chip8 main.cpp
         chip8/state.cpp
         chip8/state.h
         chip8/clock.cpp
-        chip8/clock.h)
-
-set(SDL2PP_WITH_IMAGE ON) # if you need SDL_image support
-set(SDL2PP_WITH_MIXER ON) # if you need SDL_mixer support
-set(SDL2PP_WITH_TTF ON) # if you need SDL_ttf support
-
-find_package(SDL2pp REQUIRED)
-target_link_libraries(chip8 SDL2pp::SDL2pp)
-target_compile_options(chip8 PUBLIC -fmodules-ts -O3 -Wall -Wextra)
+        chip8/clock.h
+    )
+    target_link_libraries(chip8 PRIVATE SDL2pp::SDL2pp)
+    target_compile_options(chip8 PRIVATE -Wall -Wextra -O3)
+endif()

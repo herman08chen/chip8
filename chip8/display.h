@@ -5,36 +5,37 @@
 #ifndef CHIP8_DISPLAY_H
 #define CHIP8_DISPLAY_H
 
-
-#include <SDL2pp/SDL2pp.hh>
+#include <array>
+#include <cstdint>
+#include <memory>
 
 #include "clock.h"
-namespace sdl2 = SDL2pp;
-
 
 namespace CHIP8 {
-    class sdl_t {
-        sdl2::Window _window;
-        sdl2::Renderer _renderer;
-        sdl2::Texture _texture;
-        std::array<std::array<std::uint8_t, 64>, 32> _pixels;
-        bool _needs_draw;
-        std::array<std::uint8_t, 16> _keys;
-        sdl2::Mixer _mixer;
-        Clock _timer;
 
-    public:
-        sdl_t() noexcept;
-        void clear() noexcept;
-        std::uint8_t exchange_pixel(std::uint16_t x, std::uint16_t y, std::uint8_t pixel) noexcept;;
-        void draw() noexcept;
-        void set_key(std::uint8_t, bool is_down) noexcept;
-        [[nodiscard]] bool is_pressed(const std::uint8_t&) const noexcept;
-        [[nodiscard]] const std::array<std::uint8_t, 16>& get_keys() const noexcept;
-        void play_sound() noexcept;
-        void stop_sound() noexcept;
-        [[nodiscard]] bool needs_draw() const noexcept;
-    };
-}
+// Abstract display/input/audio interface.  Keeping this free of SDL lets the
+// CPU core be compiled and unit-tested without any SDL dependency.
+class IDisplay {
+public:
+    virtual ~IDisplay() = default;
 
-#endif //CHIP8_DISPLAY_H
+    virtual void clear() noexcept = 0;
+    virtual std::uint8_t exchange_pixel(std::uint16_t x, std::uint16_t y,
+                                        std::uint8_t pixel) noexcept = 0;
+    virtual void draw() noexcept = 0;
+    virtual void set_key(std::uint8_t key, bool is_down) noexcept = 0;
+    [[nodiscard]] virtual bool is_pressed(std::uint8_t key) const noexcept = 0;
+    [[nodiscard]] virtual const std::array<std::uint8_t, 16>& get_keys() const noexcept = 0;
+    virtual void play_sound() noexcept = 0;
+    virtual void stop_sound() noexcept = 0;
+    [[nodiscard]] virtual bool needs_draw() const noexcept = 0;
+};
+
+// SDL implementation of IDisplay, defined in display.cpp.
+class sdl_t;
+
+std::unique_ptr<IDisplay> make_sdl_display() noexcept;
+
+}  // namespace CHIP8
+
+#endif  // CHIP8_DISPLAY_H
